@@ -1,7 +1,7 @@
 
-  # Create
+  # Medical Web App
 
-  This is a code bundle for Create. The original project is available at https://www.figma.com/design/Uk3Q4YN6M7zSdmr9bI7fpV/Create.
+  This is a code bundle for Medical Web App. The original project is available at https://www.figma.com/design/Uk3Q4YN6M7zSdmr9bI7fpV/Medical-Web-App.
 
   ## Running the code
 
