@@ -28,6 +28,28 @@ export default function DispatchTab({ formData, setFormData, disasterMode = fals
             </div>
 
             <div>
+              <Label htmlFor="activeResponse">Active Response</Label>
+              <Select 
+                value={formData.activeResponse || ''}
+                onValueChange={(value) => setFormData({...formData, activeResponse: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select response type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="001-routine">001 - Routine Emergency</SelectItem>
+                  <SelectItem value="024-hurricane">024 - Hurricane Response</SelectItem>
+                  <SelectItem value="025-building-fire">025 - Building Fire</SelectItem>
+                  <SelectItem value="042-mass-casualty">042 - Mass Casualty Incident</SelectItem>
+                  <SelectItem value="055-hazmat">055 - Hazmat Incident</SelectItem>
+                  <SelectItem value="067-flood-rescue">067 - Flood Rescue</SelectItem>
+                  <SelectItem value="078-earthquake">078 - Earthquake Response</SelectItem>
+                  <SelectItem value="099-training">099 - Responder Training</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label htmlFor="unitNumber">Unit</Label>
               <Input 
                 id="unitNumber" 
@@ -84,6 +106,28 @@ export default function DispatchTab({ formData, setFormData, disasterMode = fals
               value={formData.incidentNumber || `INC-${Date.now()}`}
               onChange={(e) => setFormData({...formData, incidentNumber: e.target.value})}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="activeResponse">Active Response</Label>
+            <Select 
+              value={formData.activeResponse || ''}
+              onValueChange={(value) => setFormData({...formData, activeResponse: value})}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select response type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="001-routine">001 - Routine Emergency</SelectItem>
+                <SelectItem value="024-hurricane">024 - Hurricane Response</SelectItem>
+                <SelectItem value="025-building-fire">025 - Building Fire</SelectItem>
+                <SelectItem value="042-mass-casualty">042 - Mass Casualty Incident</SelectItem>
+                <SelectItem value="055-hazmat">055 - Hazmat Incident</SelectItem>
+                <SelectItem value="067-flood-rescue">067 - Flood Rescue</SelectItem>
+                <SelectItem value="078-earthquake">078 - Earthquake Response</SelectItem>
+                <SelectItem value="099-training">099 - Responder Training</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

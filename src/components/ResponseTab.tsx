@@ -4,12 +4,12 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
-import { Hospital, Printer, RotateCcw } from 'lucide-react';
+import { Hospital, Printer, RotateCcw, Mic, Sparkles } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import ICD10Search from './ICD10Search';
+import ICD11Search from './ICD11Search';
 import VitalsChart from './VitalsChart';
 import Barcode from 'react-barcode';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface ResponseTabProps {
   formData: any;
@@ -18,6 +18,9 @@ interface ResponseTabProps {
 }
 
 export default function ResponseTab({ formData, setFormData, disasterMode = false }: ResponseTabProps) {
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingFor, setRecordingFor] = useState<'complaint' | 'narrative' | null>(null);
+
   // Generate unique patient ID if not exists
   useEffect(() => {
     if (!formData.patientId) {
@@ -119,7 +122,7 @@ export default function ResponseTab({ formData, setFormData, disasterMode = fals
       // Clear complaint and narrative
       chiefComplaint: '',
       narrative: '',
-      icd10Code: '',
+      icd10Code: [],
       // Clear transport info for new patient
       transportType: '',
       destination: '',
@@ -130,6 +133,101 @@ export default function ResponseTab({ formData, setFormData, disasterMode = fals
     toast.success('New patient form ready', {
       description: `Patient ID: ${newPatientId}`
     });
+  };
+
+  const handleVoiceMemo = (field: 'complaint' | 'narrative') => {
+    if (isRecording && recordingFor === field) {
+      // Stop recording
+      setIsRecording(false);
+      setRecordingFor(null);
+      toast.success('Voice memo saved', {
+        description: 'Recording has been transcribed'
+      });
+      // In production, this would use Web Speech API or similar
+      const mockTranscription = field === 'complaint' 
+        ? 'Patient complains of chest pain radiating to left arm, difficulty breathing'
+        : 'Patient found conscious and alert. Administered oxygen at 15 LPM via non-rebreather mask. IV established in left AC. Vitals monitored continuously during transport.';
+      
+      if (field === 'complaint') {
+        setFormData({...formData, chiefComplaint: (formData.chiefComplaint || '') + ' ' + mockTranscription});
+      } else {
+        setFormData({...formData, narrative: (formData.narrative || '') + ' ' + mockTranscription});
+      }
+    } else {
+      // Start recording
+      setIsRecording(true);
+      setRecordingFor(field);
+      toast.info('Recording voice memo...', {
+        description: 'Speak clearly into the microphone'
+      });
+    }
+  };
+
+  const handleAICodeGeneration = () => {
+    const complaint = formData.chiefComplaint || '';
+    if (!complaint.trim()) {
+      toast.error('No complaint text found', {
+        description: 'Please enter a chief complaint first'
+      });
+      return;
+    }
+
+    toast.loading('Analyzing complaint with AI...', { duration: 1500 });
+    
+    // Mock AI analysis - in production would use actual AI/NLP
+    setTimeout(() => {
+      const suggestedCodes: string[] = [];
+      const lowerComplaint = complaint.toLowerCase();
+      
+      // Collect all applicable codes
+      if (lowerComplaint.includes('chest pain') || lowerComplaint.includes('cardiac')) {
+        suggestedCodes.push('MD11.9'); // Chest pain, unspecified
+      }
+      if (lowerComplaint.includes('stroke') || lowerComplaint.includes('facial droop')) {
+        suggestedCodes.push('8B11.1'); // Ischaemic stroke
+      }
+      if (lowerComplaint.includes('breath') || lowerComplaint.includes('dyspnea') || lowerComplaint.includes('shortness')) {
+        suggestedCodes.push('MD11.1'); // Dyspnoea
+      }
+      if (lowerComplaint.includes('fall') || lowerComplaint.includes('fell')) {
+        suggestedCodes.push('NC50'); // Fall from unspecified height
+      }
+      if (lowerComplaint.includes('mva') || lowerComplaint.includes('motor vehicle') || lowerComplaint.includes('accident')) {
+        suggestedCodes.push('NI20.0'); // Injury in motor vehicle traffic accident
+      }
+      if (lowerComplaint.includes('head') || lowerComplaint.includes('concussion')) {
+        suggestedCodes.push('NA00'); // Head injury
+      }
+      if (lowerComplaint.includes('burn')) {
+        suggestedCodes.push('ND60'); // Burn of unspecified body region
+      }
+      if (lowerComplaint.includes('overdose') || lowerComplaint.includes('poisoning')) {
+        suggestedCodes.push('NE10.0'); // Poisoning by opioids
+      }
+      if (lowerComplaint.includes('nausea')) {
+        suggestedCodes.push('MD40.0'); // Nausea
+      }
+      if (lowerComplaint.includes('vomit')) {
+        suggestedCodes.push('MD40.1'); // Vomiting
+      }
+      if (lowerComplaint.includes('pain') && lowerComplaint.includes('abdomen')) {
+        suggestedCodes.push('MD30.0'); // Abdominal pain
+      }
+      
+      // If no specific codes matched, add generic injury code
+      if (suggestedCodes.length === 0) {
+        suggestedCodes.push('NB00'); // Injury to unspecified body region
+      }
+      
+      // Merge with existing codes, avoiding duplicates
+      const currentCodes = formData.icd10Code || [];
+      const updatedCodes = [...new Set([...currentCodes, ...suggestedCodes])];
+      
+      setFormData({...formData, icd10Code: updatedCodes});
+      toast.success('ICD-11 codes suggested', {
+        description: `Added ${suggestedCodes.length} code${suggestedCodes.length > 1 ? 's' : ''} based on complaint analysis`
+      });
+    }, 1500);
   };
 
   if (disasterMode) {
@@ -312,7 +410,31 @@ export default function ResponseTab({ formData, setFormData, disasterMode = fals
           <h2 className="mb-6 text-[#4A5FBF]">Injuries / Complaint</h2>
           
           <div>
-            <Label htmlFor="chiefComplaint">Brief Description</Label>
+            <div className="flex items-center justify-between mb-2">
+              <Label htmlFor="chiefComplaint">Brief Description</Label>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm"
+                  variant={isRecording && recordingFor === 'complaint' ? 'destructive' : 'outline'}
+                  onClick={() => handleVoiceMemo('complaint')}
+                  className="gap-2"
+                  title="Record Voice Memo"
+                >
+                  <Mic className={`h-4 w-4 ${isRecording && recordingFor === 'complaint' ? 'animate-pulse' : ''}`} />
+                  {isRecording && recordingFor === 'complaint' ? 'Recording' : 'Voice'}
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAICodeGeneration}
+                  className="gap-2"
+                  title="Generate ICD-11 Code with AI"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  AI Code
+                </Button>
+              </div>
+            </div>
             <Textarea 
               id="chiefComplaint" 
               placeholder="Quick description of injuries or chief complaint..."
@@ -540,7 +662,19 @@ export default function ResponseTab({ formData, setFormData, disasterMode = fals
         
         <div className="space-y-6">
           <div>
-            <Label htmlFor="chiefComplaint">Chief Complaint</Label>
+            <div className="flex items-center justify-between mb-2">
+              <Label htmlFor="chiefComplaint">Chief Complaint</Label>
+              <Button 
+                size="sm"
+                variant={isRecording && recordingFor === 'complaint' ? 'destructive' : 'outline'}
+                onClick={() => handleVoiceMemo('complaint')}
+                className="gap-2"
+                title="Record Voice Memo"
+              >
+                <Mic className={`h-4 w-4 ${isRecording && recordingFor === 'complaint' ? 'animate-pulse' : ''}`} />
+                {isRecording && recordingFor === 'complaint' ? 'Recording...' : 'Voice Memo'}
+              </Button>
+            </div>
             <Textarea 
               id="chiefComplaint" 
               placeholder="Describe the primary complaint..."
@@ -551,15 +685,43 @@ export default function ResponseTab({ formData, setFormData, disasterMode = fals
           </div>
 
           <div>
-            <Label>ICD-10 Code Search</Label>
-            <ICD10Search 
-              value={formData.icd10Code || ''}
-              onChange={(code) => setFormData({...formData, icd10Code: code})}
+            <div className="flex items-center justify-between mb-2">
+              <Label>ICD-11 Code Search</Label>
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={handleAICodeGeneration}
+                className="gap-2"
+                title="Generate ICD-11 Code with AI"
+              >
+                <Sparkles className="h-4 w-4" />
+                AI Generate Code
+              </Button>
+            </div>
+            <ICD11Search 
+              values={formData.icd10Code || []}
+              onChange={(codes) => setFormData({...formData, icd10Code: codes})}
+              onRemove={(code) => {
+                const updatedCodes = (formData.icd10Code || []).filter((c: string) => c !== code);
+                setFormData({...formData, icd10Code: updatedCodes});
+              }}
             />
           </div>
 
           <div>
-            <Label htmlFor="narrative">Patient Care Narrative</Label>
+            <div className="flex items-center justify-between mb-2">
+              <Label htmlFor="narrative">Patient Care Narrative</Label>
+              <Button 
+                size="sm"
+                variant={isRecording && recordingFor === 'narrative' ? 'destructive' : 'outline'}
+                onClick={() => handleVoiceMemo('narrative')}
+                className="gap-2"
+                title="Record Voice Memo"
+              >
+                <Mic className={`h-4 w-4 ${isRecording && recordingFor === 'narrative' ? 'animate-pulse' : ''}`} />
+                {isRecording && recordingFor === 'narrative' ? 'Recording...' : 'Voice Memo'}
+              </Button>
+            </div>
             <Textarea 
               id="narrative" 
               placeholder="Detailed narrative of patient assessment and care provided..."
